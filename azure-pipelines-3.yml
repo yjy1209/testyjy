@@ -1,0 +1,143 @@
+# Node.js with Vue
+# Build a Node.js project that uses Vue.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- task: NodeTool@0
+  inputs:
+        {
+            "name": "serverEndpoint",
+            "aliases": [
+                "jenkinsServerConnection"
+            ],
+            "type": "connectedService:Jenkins",
+            "label": "Jenkins service connection",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "Select the service connection for your Jenkins instance. To create one, click the Manage link and create a new Jenkins service connection."
+        },
+        {
+            "name": "jobName",
+            "type": "pickList",
+            "label": "Job name",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "The name of the Jenkins job to download artifacts from.  This must exactly match the job name on the Jenkins server.",
+            "properties": {
+                "EditableOptions": "True"
+            }
+        },
+        {
+            "name": "jenkinsJobType",
+            "type": "pickList",
+            "label": "Jenkins job type",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Jenkins job type, detected automatically.",
+            "visibleRule": "jobName = invalidjobName",
+            "properties": {
+                "EditableOptions": "false",
+                "PopulateDefaultValue": "true"
+            }
+        },
+        {
+            "name": "saveTo",
+            "type": "filePath",
+            "label": "Save to",
+            "defaultValue": "jenkinsArtifacts",
+            "required": true,
+            "helpMarkDown": "Jenkins artifacts will be downloaded and saved to this directory.  This directory will be created if it does not exist."
+        },
+        {
+            "name": "jenkinsBuild",
+            "type": "radio",
+            "label": "Download artifacts produced by",
+            "defaultValue": "LastSuccessfulBuild",
+            "required": true,
+            "groupName": "advanced",
+            "helpMarkDown": "Download artifacts produced by the last successful build, or from a specific build instance.",
+            "options": {
+                "LastSuccessfulBuild": "Last Successful Build",
+                "BuildNumber": "Build Number"
+            }
+        },
+        {
+            "name": "jenkinsBuildNumber",
+            "type": "pickList",
+            "label": "Jenkins build number",
+            "defaultValue": "1",
+            "required": true,
+            "groupName": "advanced",
+            "visibleRule": "jenkinsBuild == BuildNumber",
+            "helpMarkDown": "Download artifacts produced by this build.",
+            "properties": {
+                "EditableOptions": "True"
+            }
+        },
+        {
+            "name": "itemPattern",
+            "type": "multiLine",
+            "label": "Item Pattern",
+            "defaultValue": "**",
+            "required": false,
+            "groupName": "advanced",
+            "helpMarkDown": "Specify files to be downloaded as multi line minimatch pattern. [More Information](https://aka.ms/minimatchexamples) <p>The default pattern (\\*\\*) will download all files across all artifacts produced by the Jenkins job. To download all files within artifact drop use drop/**.</p>",
+            "properties": {
+                "rows": "3",
+                "resizable": "true"
+            }
+        },
+        {
+            "name": "downloadCommitsAndWorkItems",
+            "type": "boolean",
+            "label": "Download Commits and WorkItems",
+            "defaultValue": false,
+            "required": false,
+            "groupName": "advanced",
+            "helpMarkDown": "Enables downloading the commits and work item details associated with the Jenkins Job"
+        },
+        {
+            "name": "startJenkinsBuildNumber",
+            "type": "pickList",
+            "label": "Download commits and work items from",
+            "defaultValue": "",
+            "required": false,
+            "visibleRule": "downloadCommitsAndWorkItems == true && jenkinsBuild == BuildNumber",
+            "groupName": "advanced",
+            "properties": {
+                "EditableOptions": "True"
+            },
+            "helpMarkDown": "Optional start build number for downloading commits and work items. If provided, all commits and work items between start build number and build number given as input to download artifacts will be downloaded."
+        },
+        {
+            "name": "artifactDetailsFileNameSuffix",
+            "type": "string",
+            "label": "Commit and WorkItem FileName",
+            "defaultValue": "",
+            "required": false,
+            "visibleRule": "downloadCommitsAndWorkItems == invalid",
+            "groupName": "advanced",
+            "helpMarkDown": "Optional file name suffix for commits and work item attachments. Attachments will be created with commits_{suffix}.json and workitem_{suffix}.json. If this input is not provided, attachments will be created with the name commits.json and workitems.json"
+        },
+        {
+            "name": "propagatedArtifacts",
+            "type": "boolean",
+            "label": "Artifacts are propagated to Azure",
+            "defaultValue": "false",
+            "required": false,
+            "groupName": "propagatedArtifactsGroup",
+            "helpMarkDown": "Check this if Jenkins artifacts were propagated to Azure. To upload Jenkins artifacts to azure, refer to this [Jenkins plugin](https://wiki.jenkins.io/display/JENKINS/Windows+Azure+Storage+Plugin)"
+        }
+  displayName: 'Install Node.js'
+
+- script: |
+    npm install
+    npm run build
+  displayName: 'npm install and build'
